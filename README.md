@@ -76,18 +76,18 @@ The application follows a layered architecture. Controllers handle HTTP concerns
 
 ```mermaid
 flowchart TD
-    Client([Client]) --> API[Spring Boot REST API]
-    API --> Controller[Controller<br/>ProjectController · AiController · IntegrationController]
-    Controller --> Service[Service<br/>ProjectService · CodeReviewService]
-    Service --> Repository[Repository<br/>ProjectRepository]
-    Repository --> DB[(PostgreSQL)]
+    Client(["Client"]) --> API["Spring Boot REST API"]
+    API --> Controller["Controller<br/>ProjectController, AiController, IntegrationController"]
+    Controller --> Service["Service<br/>ProjectService, CodeReviewService"]
+    Service --> Repository["Repository<br/>ProjectRepository"]
+    Repository --> DB[("PostgreSQL")]
 
-    Service --> Integration[Integration Layer<br/>AiReviewClient · GitHubClient ·<br/>PackageVersionClient · VulnerabilityClient]
-    Controller -.->|integration endpoints| Integration
-    Integration --> Claude[Claude API]
-    Integration --> External[External APIs<br/>GitHub · deps.dev · OSV.dev]
+    Service --> Integration["Integration Layer<br/>AiReviewClient, GitHubClient,<br/>PackageVersionClient, VulnerabilityClient"]
+    Controller -. "integration endpoints" .-> Integration
+    Integration --> Claude["Claude API"]
+    Integration --> External["External APIs<br/>GitHub, deps.dev, OSV.dev"]
 
-    Advice[[GlobalExceptionHandler<br/>@RestControllerAdvice]] -.-> Controller
+    Advice[["GlobalExceptionHandler<br/>(RestControllerAdvice)"]] -.-> Controller
 ```
 
 **Request flow for project management:**
@@ -110,12 +110,12 @@ A single `projects` table, created by the Flyway migration `V1__create_projects_
 ```mermaid
 erDiagram
     PROJECTS {
-        BIGINT id PK "identity"
-        VARCHAR(100) name "NOT NULL, UNIQUE"
-        VARCHAR(1000) description "nullable"
-        VARCHAR(20) status "NOT NULL, CHECK in enum values"
-        TIMESTAMPTZ created_at "NOT NULL"
-        TIMESTAMPTZ updated_at "NOT NULL"
+        bigint id PK "identity"
+        varchar name "length 100, not null, unique"
+        varchar description "length 1000, nullable"
+        varchar status "length 20, not null, enum check"
+        timestamptz created_at "not null"
+        timestamptz updated_at "not null"
     }
 ```
 
@@ -182,21 +182,21 @@ sequenceDiagram
     participant C as Client
     participant AC as AiController
     participant S as CodeReviewService
-    participant RC as AiReviewClient<br/>(ClaudeAiReviewClient)
+    participant RC as ClaudeAiReviewClient
     participant API as Claude API
 
-    C->>AC: POST /api/ai/code-review {language, code}
+    C->>AC: POST /api/ai/code-review (language, code)
     AC->>AC: Bean Validation (400 on invalid input)
     AC->>S: review(request)
-    S->>RC: isConfigured()?
+    S->>RC: isConfigured()
     alt ANTHROPIC_API_KEY missing
         S-->>C: 503 Service Unavailable (configuration error)
     else configured
         S->>RC: reviewCode(language, code)
-        RC->>API: Messages API request with system prompt +<br/>structured output schema (CodeReviewResponse)
-        API-->>RC: JSON matching the schema
+        RC->>API: Messages API request with system prompt and structured output schema
+        API-->>RC: JSON matching the CodeReviewResponse schema
         RC-->>S: CodeReviewResponse
-        S-->>C: 200 {summary, issues, recommendations}
+        S-->>C: 200 OK (summary, issues, recommendations)
     end
 ```
 
